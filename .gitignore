@@ -1,0 +1,7 @@
+data/*
+models/*
+predictions/*
+submit/*.sh
+cache/*
+results/*
+error_outputs/*

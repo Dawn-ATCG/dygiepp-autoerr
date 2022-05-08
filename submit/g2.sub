@@ -1,0 +1,57 @@
+#!/bin/bash
+#SBATCH -J dygie_scirex_full                                                                        # Job name
+#SBATCH -o /home/NETID/dygiepp-autoerr/results/dygie_%j.out                                         # output file (%j expands to jobID)
+#SBATCH -e /home/NETID/dygiepp-autoerr/results/dygie_%j.err                                         # error log file (%j expands to jobID)
+#SBATCH --mail-type=ALL                                                                             # Request status by email 
+#SBATCH --mail-user=                                                                                # Email address to send results to.
+#SBATCH -N 1                                                                                        # Total number of nodes requested
+#SBATCH -n 4                                                                                        # Total number of cores requested
+#SBATCH --get-user-env                                                                              # retrieve the users login environment
+#SBATCH --mem=80000                                                                                 # server memory requested (per node)
+#SBATCH -t 12:00:00                                                                                 # Time limit (hh:mm:ss)
+#SBATCH --partition=default_partition                                                               # Request partition
+#SBATCH --gres=gpu:a6000:1                                                                          # Type/number of GPUs needed
+
+
+
+
+
+cd /home/NETID/dygiepp+auto-err/   
+source /share/apps/anaconda3/2021.05/bin/activate
+source activate dygie
+
+export PYTHONUNBUFFERED=TRUE
+
+
+
+
+allennlp train "training_config/${config_name}.jsonnet" \
+    --serialization-dir "models/${config_name}" \
+    --include-package dygie
+
+
+allennlp predict models/${config_name}/model.tar.gz \
+    data/${dataset_name}/test.json \
+    --predictor dygie \
+    --include-package dygie \
+    --use-dataset-reader \
+    --output-file predictions/${config_name}.jsonl \
+    --cuda-device 0 \
+    --silent
+
+
+python3 error_datasets/scirex/${dataset_name}_span_to_temp.py -i predictions/${config_name}.jsonl -o error_outputs/${config_name}_temp.jsonl
+
+
+python3 error_datasets/scirex/${dataset_name}_eval.py --pred_file error_outputs/${config_name}_temp.jsonl --out_file error_outputs/${config_name}_eval.jsonl
+
+
+python3 error_datasets/Error_Analysis.py -i error_outputs/${config_name}_eval.jsonl -s all -m "Errors" -o error_outputs/${config_name}_error_anas_full.txt
+
+
+touch error_outputs/${config_name}_finished.txt
+tail -n 29 error_outputs/${config_name}_error_anas_full.txt >> error_outputs/${config_name}_finished.txt
+echo -e "\n\n" >> error_outputs/${config_name}_finished.txt
+cat error_outputs/${config_name}_eval.jsonl_avgF1.txt >> error_outputs/${config_name}_finished.txt
+echo -e "training config:\n\n" >> error_outputs/${config_name}_finished.txt
+cat training_config/${config_name}.jsonnet >> error_outputs/${config_name}_finished.txt
