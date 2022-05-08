@@ -5,3 +5,5 @@ The dygie ++ original code is from [here](https://github.com/dwadden/dygiepp)
 The auto error analysis original code is from [here](https://github.com/IceJinx33/auto-err-template-fill)
 
 The submit folder contains `g2.sub` for slurm cluster users. (cornell G2 cluster)
+
+For training and testing, you should create these folders for data: `models`, `predictions`, `data`, `results`, `error_outputs`.
